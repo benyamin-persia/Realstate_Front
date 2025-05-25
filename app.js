@@ -20,12 +20,29 @@ console.log("CLIENT_URL:", process.env.CLIENT_URL);
 console.log("JWT_SECRET_KEY:", process.env.JWT_SECRET_KEY ? "Set" : "Not Set");
 console.log("DATABASE_URL:", process.env.DATABASE_URL ? "Set" : "Not Set");
 
-app.use(cors({
+// CORS configuration
+const corsOptions = {
   origin: process.env.CLIENT_URL,
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['set-cookie']
+};
+
+console.log("CORS configuration:", corsOptions);
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, {
+    cookies: req.cookies,
+    headers: req.headers
+  });
+  next();
+});
 
 app.use("/api/auth", authRoute);
 app.use("/api/posts", postRoute);
