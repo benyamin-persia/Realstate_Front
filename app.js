@@ -22,7 +22,7 @@ console.log("DATABASE_URL:", process.env.DATABASE_URL ? "Set" : "Not Set");
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.CLIENT_URL,
+  origin: [process.env.CLIENT_URL, 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -53,31 +53,39 @@ app.use("/api/messages", messageRoute);
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: [process.env.CLIENT_URL, 'http://localhost:5173'],
     credentials: true
   }
 });
+
+const users = {};
 
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
   socket.on("newUser", (userId) => {
     console.log("User connected:", userId);
-    // Store the user ID and socket ID mapping (you might need a way to map multiple sockets per user if needed)
-    // Example: users[userId] = socket.id;
-    // This part depends on how you manage users and sockets
+    users[userId] = socket.id;
   });
 
   socket.on("sendMessage", ({ receiverId, data }) => {
     console.log("Message received for receiver:", receiverId, "data:", data);
-    // Find the receiver's socket ID and emit the message
-    // Example: io.to(users[receiverId]).emit("getMessage", data);
-    // This also depends on your user-socket mapping
+    const receiverSocketId = users[receiverId];
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("getMessage", data);
+    } else {
+      console.log("Receiver not connected:", receiverId);
+    }
   });
 
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
-    // Remove the user from your active users list if you maintain one
+    for (const [userId, id] of Object.entries(users)) {
+      if (id === socket.id) {
+        delete users[userId];
+        break;
+      }
+    }
   });
 });
 
